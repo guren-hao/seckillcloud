@@ -1,65 +1,55 @@
 package com.weiran.uaa.controller;
 
+import com.weiran.common.enums.CodeMsg;
 import com.weiran.common.obj.Result;
+import com.weiran.uaa.annotations.AccessLimit;
 import com.weiran.uaa.param.LoginParam;
 import com.weiran.uaa.param.RegisterParam;
+import com.weiran.uaa.param.UpdatePassParam;
 import com.weiran.uaa.service.UserService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
-import io.swagger.annotations.ApiImplicitParams;
 import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 
 /**
- * 登陆控制器
+ * 登录控制器
  */
-@Controller
+@RestController
 @RequiredArgsConstructor
-@Api("登陆控制器")
+@Api("登录控制器")
 public class UserController {
 
     final UserService userService;
 
+    @AccessLimit() // 默认限制1s内三次
     @PostMapping("user/doLogin")
-    @ResponseBody
-    @ApiOperation("登陆，信息写进redis")
-    @ApiImplicitParams({
-            @ApiImplicitParam(value = "响应", required = true),
-            @ApiImplicitParam(value = "会话", required = true),
-            @ApiImplicitParam(value = "登陆传递字段", required = true)
-    })
-    public Result doLogin(HttpServletResponse response, HttpSession session , LoginParam loginParam) {
-        return userService.doLogin(response, session, loginParam);
+    @ApiOperation("登录，信息写进redis")
+    @ApiImplicitParam(value = "登录传递字段")
+    public Result<String> doLogin(@RequestBody LoginParam loginParam) {
+        return userService.doLogin(loginParam);
     }
 
     @PostMapping("user/doRegister")
-    @ResponseBody
     @ApiOperation("注册")
-    @ApiImplicitParam(value = "注册传递字段", required = true)
-    public Result doRegister(RegisterParam registerParam) {
+    @ApiImplicitParam(value = "注册传递字段")
+    public Result<CodeMsg> doRegister(@RequestBody RegisterParam registerParam) {
         return userService.doRegister(registerParam);
     }
 
-    @GetMapping("/register")
-    public String register() {
-        return "/register.html";
+    @PostMapping("user/updatePass")
+    @ApiOperation("更换密码")
+    public Result<CodeMsg> updatePass(@RequestBody UpdatePassParam updatePassParam, HttpServletRequest request) {
+        return userService.updatePass(updatePassParam, request);
     }
 
-    @GetMapping("user/logout")
-    public Result doLogout(HttpServletRequest request, HttpServletResponse response) {
-        return userService.doLogout(request, response);
+    @RequestMapping("user/logout")
+    @ApiOperation("注销")
+    public Result<CodeMsg> doLogout(HttpServletRequest request) {
+        return userService.doLogout(request);
     }
 
-    @GetMapping("/login")
-    public String login() {
-        return "/login.html";
-    }
 }

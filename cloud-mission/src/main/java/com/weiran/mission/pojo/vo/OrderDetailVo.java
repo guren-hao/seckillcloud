@@ -1,19 +1,30 @@
 package com.weiran.mission.pojo.vo;
 
-import com.weiran.mission.pojo.bo.GoodsBo;
-import com.weiran.mission.entity.OrderInfo;
+
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
-import lombok.Data;
+import lombok.*;
+
+import java.time.LocalDateTime;
 
 @Data
+@Builder
+@EqualsAndHashCode(callSuper = true)
 @ApiModel("订单页面对象")
+@NoArgsConstructor
+@AllArgsConstructor
 public class OrderDetailVo extends BaseVo {
 
-    @ApiModelProperty(value = "商品业务对象", required = true)
-    private GoodsBo goodsBo;
+    @ApiModelProperty(value = "订单id")
+    private Long orderId;
 
-    @ApiModelProperty(value = "订单基础对象", required = true)
-    private OrderInfo order;
+    @ApiModelProperty(value = "商品id")
+    private Long goodsId;
+
+    @ApiModelProperty(value = "商品名称")
+    private String goodsName;
+
+    @ApiModelProperty(value = "创建时间")
+    private LocalDateTime createdAt;
 
 }

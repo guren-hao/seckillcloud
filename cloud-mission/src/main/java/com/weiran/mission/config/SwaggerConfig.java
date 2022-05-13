@@ -55,7 +55,7 @@ public class SwaggerConfig {
                 .title("【微服务秒杀系统-秒杀】接口文档")
                 .version("1.0.0")
                 .contact("weiran")
-                .termsOfServiceUrl("http://localhost:8888/login")
+                .termsOfServiceUrl("http://localhost:8205/uaa/login")
                 .description("秒杀系统微服务相关文档")
                 .build();
     }

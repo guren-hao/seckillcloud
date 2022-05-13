@@ -1,44 +1,48 @@
 package com.weiran.mission.service.impl;
 
-import com.weiran.common.obj.CodeMsg;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.weiran.common.obj.Result;
+
+import com.weiran.common.redis.key.UserKey;
 import com.weiran.common.redis.manager.RedisService;
-import com.weiran.mission.entity.OrderInfo;
-import com.weiran.mission.entity.SeckillOrder;
-import com.weiran.mission.manager.OrderInfoManager;
-import com.weiran.mission.pojo.bo.GoodsBo;
-import com.weiran.mission.pojo.vo.OrderDetailVo;
-import com.weiran.mission.service.GoodsService;
+import com.weiran.mission.entity.Goods;
+import com.weiran.mission.entity.Order;
+import com.weiran.mission.manager.GoodsManager;
+import com.weiran.mission.manager.OrderManager;
 import com.weiran.mission.service.OrderService;
-import com.weiran.mission.service.SeckillOrderService;
+import com.weiran.mission.pojo.vo.OrderDetailVo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import javax.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class OrderServiceImpl implements OrderService {
 
-    final OrderInfoManager orderInfoManager;
+    final OrderManager orderManager;
+    final GoodsManager goodsManager;
     final RedisService redisService;
-    final SeckillOrderService seckillOrderService;
-    final GoodsService goodsService;
 
-    // 查询订单信息
+    // 返回客户的所有订单数据
     @Override
-    public Result<OrderDetailVo> info(long orderId) {
-        SeckillOrder seckillOrder = seckillOrderService.selectByOrderId(orderId);
-        if (seckillOrder == null) {
-            return null;
+    public Result<List<OrderDetailVo>> getOrderList(HttpServletRequest request) {
+        String authInfo = request.getHeader("Authorization");
+        String loginToken = authInfo.split("Bearer ")[1];
+        long userId = redisService.get(UserKey.getById, loginToken, Long.class);
+        List<OrderDetailVo> orderDetailVoList = new ArrayList<>();
+        List<Order> orderList = orderManager.list(Wrappers.<Order>lambdaQuery().eq(Order::getUserId, userId));
+        for (Order order : orderList) {
+            Goods goods = goodsManager.getById(order.getGoodsId());
+            orderDetailVoList.add(OrderDetailVo.builder()
+                    .orderId(order.getId())
+                    .goodsId(order.getGoodsId())
+                    .goodsName(goods.getGoodsName())
+                    .createdAt(order.getCreatedAt())
+                    .build());
         }
-        OrderInfo orderInfo = orderInfoManager.getById(orderId);
-        if (orderInfo == null) {
-            return Result.error(CodeMsg.ORDER_NOT_EXIST);
-        }
-        long goodsId = orderInfo.getGoodsId();
-        GoodsBo goodsBo = goodsService.getGoodsBoByGoodsId(goodsId);
-        OrderDetailVo orderDetailVo = new OrderDetailVo();
-        orderDetailVo.setOrder(orderInfo);
-        orderDetailVo.setGoodsBo(goodsBo);
-        return Result.success(orderDetailVo);
+        return Result.success(orderDetailVoList);
     }
 }

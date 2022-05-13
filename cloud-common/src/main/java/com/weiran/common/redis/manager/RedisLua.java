@@ -1,13 +1,13 @@
 package com.weiran.common.redis.manager;
 
+import com.weiran.common.enums.RedisConstant;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collections;
 
 /**
  * lua脚本使用
@@ -17,46 +17,55 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RedisLua {
 
-    final JedisPool jedisPool;
+    final RedisTemplate<String, Object> redisTemplate;
 
     /**
-     * 统计访问次数
+     * 判断库存和预减库存
      */
-    public Object getVisitorCount(String key) {
-        Object object;
-        try {
-            Jedis jedis = jedisPool.getResource();
-            String count =
-                    "local num=redis.call('get',KEYS[1]) return num";
-            List<String> keys = new ArrayList<String>();
-            keys.add(key);
-            List<String> list = new ArrayList<String>();
-            jedis.auth("123456");
-            String luaScript = jedis.scriptLoad(count);
-            object = jedis.evalsha(luaScript, keys, list);
-        } catch (Exception e) {
-            log.error("统计访问次数失败！！！", e);
-            return "0";
-        }
-        return object;
+    public Long judgeStockAndDecrStock(Long goodsId) {
+        String stockScript = "local stock = tonumber(redis.call('get',KEYS[1]));" +
+                "if (stock <= 0) then" +
+                "    return -1;" +
+                "    end;" +
+                "if (stock > 0) then" +
+                "    return redis.call('incrby', KEYS[1], -1);" +
+                "    end;";
+
+        DefaultRedisScript<Long> redisScript = new DefaultRedisScript<>(stockScript, Long.class);
+        Long count = redisTemplate.execute(redisScript, Collections.singletonList(RedisConstant.SECKILL_KEY + goodsId));
+        return count;
+
     }
 
     /**
      * 统计访问次数
      */
-    public void visitorCount(String key) {
+    public Long getVisitorCount(String lockKey) {
         try {
-            Jedis jedis = jedisPool.getResource();
-            String count =
-                    "local num=redis.call('incr',KEYS[1]) return num";
-            List<String> keys = new ArrayList<String>();
-            keys.add(key);
-            List<String> list = new ArrayList<String>();
-            jedis.auth("123456");
-            String luaScript = jedis.scriptLoad(count);
-            jedis.evalsha(luaScript, keys, list);
+            // LUA脚本中 tonumber函数可将调用结果转换为number形式
+            String countScript =
+                    "local num=tonumber(redis.call('get',KEYS[1]));" +
+                            "return num;";
+            DefaultRedisScript<Long> redisScript = new DefaultRedisScript<>(countScript, Long.class);
+            return redisTemplate.execute(redisScript, Collections.singletonList(lockKey));
         } catch (Exception e) {
             log.error("统计访问次数失败！！！", e);
+            return null;
+        }
+    }
+
+    /**
+     * 增加访问次数
+     */
+    public void addVisitorCount(String lockKey) {
+        try {
+            String addScript =
+                    "local num=redis.call('incr',KEYS[1]) return num";
+            DefaultRedisScript<Long> redisScript = new DefaultRedisScript<>(addScript, Long.class);
+            // 限制60s访问5次
+            redisTemplate.execute(redisScript, Collections.singletonList(lockKey));
+        } catch (Exception e) {
+            log.error("增加访问次数失败！！！", e);
         }
     }
 }

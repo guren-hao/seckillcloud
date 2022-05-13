@@ -8,8 +8,16 @@ import lombok.Data;
 @Data
 public class RegisterParam {
 
-    private String mobile;
+    // 手机号
+    private String registerMobile;
 
-    private String password;
+    // 用户名
+    private String registerUsername;
+
+    // 身份证号码
+    private String registerIdentity;
+
+    // 密码
+    private String registerPassword;
 
 }
